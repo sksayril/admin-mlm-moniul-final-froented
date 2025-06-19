@@ -9,7 +9,8 @@ import {
   Activity,
   Calendar,
   AlertCircle,
-  ChevronDown
+  ChevronDown,
+  TrendingDown
 } from 'lucide-react';
 import { AdminData, dashboardService, DashboardStatsResponse } from '../api';
 import StatsChart from './StatsChart';
@@ -89,27 +90,27 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ adminData }) => {
     },
     {
       title: 'Total Revenue',
-      value: `$${financialStats.totalRevenue.toFixed(2)}`,
-      change: `+$${financialStats.revenueInPeriod.toFixed(2)}`,
+      value: `₹${financialStats.totalRevenue.toFixed(2)}`,
+      change: `+₹${financialStats.revenueInPeriod.toFixed(2)}`,
       changeType: 'positive',
       icon: DollarSign,
       color: 'bg-green-500'
     },
     {
       title: 'Withdrawals',
-      value: `$${(financialStats.totalWithdrawals.pending.totalAmount + 
-        financialStats.totalWithdrawals.approved.totalAmount).toFixed(2)}`,
+      value: `₹${(financialStats.totalWithdrawals.pending.totalAmount +
+                 financialStats.totalWithdrawals.approved.totalAmount).toFixed(2)}`,
       change: `${financialStats.totalWithdrawals.pending.count} pending`,
       changeType: 'neutral',
-      icon: CreditCard,
+      icon: TrendingDown,
       color: 'bg-orange-500'
     },
     {
       title: 'Active Referrers',
       value: mlmStats.activeReferrers.toString(),
-      change: `$${mlmStats.totalDirectIncome.toFixed(2)} earned`,
+      change: `₹${mlmStats.totalDirectIncome.toFixed(2)} earned`,
       changeType: 'positive',
-      icon: TrendingUp,
+      icon: Users,
       color: 'bg-purple-500'
     }
   ];
@@ -119,7 +120,7 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ adminData }) => {
     ? [
         { id: 1, action: `${userStats.newUsers} new users registered`, time: 'Today' },
         { id: 2, action: `${financialStats.totalWithdrawals.pending.count} withdrawal requests pending`, time: 'Today' },
-        { id: 3, action: `$${financialStats.revenueInPeriod.toFixed(2)} revenue generated`, time: 'This period' },
+        { id: 3, action: `₹${financialStats.revenueInPeriod.toFixed(2)} revenue generated`, time: 'This period' },
         { id: 4, action: `${userStats.activeSubscriptions} active subscriptions`, time: 'Current' },
         { id: 5, action: `${userStats.activeTpins} active TPINs`, time: 'Current' }
       ]
@@ -269,25 +270,25 @@ const DashboardContent: React.FC<DashboardContentProps> = ({ adminData }) => {
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Direct Income</span>
-              <span className="font-semibold">${mlmStats.totalDirectIncome.toFixed(2)}</span>
+              <span className="font-semibold">₹{mlmStats.totalDirectIncome.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Matrix Income</span>
-              <span className="font-semibold">${mlmStats.totalMatrixIncome.toFixed(2)}</span>
+              <span className="font-semibold">₹{mlmStats.totalMatrixIncome.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Self Income</span>
-              <span className="font-semibold">${mlmStats.totalSelfIncome.toFixed(2)}</span>
+              <span className="font-semibold">₹{mlmStats.totalSelfIncome.toFixed(2)}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-gray-600">Your Wallet Balance</span>
-              <span className="font-semibold text-green-600">${incomeWallet.balance.toFixed(2)}</span>
+              <span className="font-semibold text-green-600">₹{incomeWallet.balance.toFixed(2)}</span>
             </div>
             <div className="h-px bg-gray-200 my-2"></div>
             <div className="flex justify-between items-center font-medium text-blue-600">
               <span>Total Earnings</span>
               <span>
-                ${(mlmStats.totalDirectIncome + mlmStats.totalMatrixIncome + mlmStats.totalSelfIncome).toFixed(2)}
+                ₹{(mlmStats.totalDirectIncome + mlmStats.totalMatrixIncome + mlmStats.totalSelfIncome).toFixed(2)}
               </span>
             </div>
           </div>

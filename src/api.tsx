@@ -239,9 +239,16 @@ export interface BankDetails {
   bankName: string;
 }
 
+export interface CryptoWallet {
+  walletAddress: string;
+  walletType: string;
+  network: string;
+}
+
 export interface PaymentDetails {
   bankDetails?: BankDetails;
   upiId?: string;
+  cryptoWallet?: CryptoWallet;
 }
 
 export interface WithdrawalItem {
@@ -254,6 +261,8 @@ export interface WithdrawalItem {
   status: string;
   paymentMethod: string;
   paymentDetails: PaymentDetails;
+  processedDate?: string;
+  transactionId?: string;
 }
 
 export interface WithdrawalsResponse {
@@ -302,6 +311,46 @@ export interface TopPerformersResponse {
   sortedBy: string;
   data: {
     topPerformers: TopPerformer[];
+  };
+}
+
+export interface UserPasswordResponse {
+  status: string;
+  data: {
+    user: {
+      _id: string;
+      name: string;
+      userId: string;
+      email: string;
+      originalPassword: string;
+      mobile: string;
+      isActive: boolean;
+      role: string;
+      rank: string;
+      teamSize: number;
+      createdAt: string;
+      updatedAt: string;
+    };
+  };
+}
+
+export interface UserDeactivateRequest {
+  reason: string;
+}
+
+export interface UserDeactivateResponse {
+  status: string;
+  message: string;
+  data: {
+    user: {
+      _id: string;
+      userId: string;
+      name: string;
+      email: string;
+      isActive: boolean;
+      deactivationReason?: string;
+      deactivatedAt?: string;
+    };
   };
 }
 
@@ -391,13 +440,48 @@ export const usersService = {
     }
   },
 
-  // Get user by ID
-  getUserById: async (userId: string): Promise<User> => {
+  // Get user's original password
+  getUserPassword: async (userId: string): Promise<UserPasswordResponse> => {
+    try {
+      const response = await axios.get(`${ADMIN_USERS_ENDPOINT}/${userId}/original-password`);
+      return response.data;
+    } catch (error) {
+      console.error('User password fetch error:', error);
+      throw error;
+    }
+  },
+
+  // Get single user by ID
+  getUserById: async (userId: string): Promise<any> => {
     try {
       const response = await axios.get(`${ADMIN_USERS_ENDPOINT}/${userId}`);
       return response.data.data.user;
     } catch (error) {
       console.error('User error:', error);
+      throw error;
+    }
+  },
+
+  // Deactivate user account
+  deactivateUser: async (userId: string, reason: string): Promise<UserDeactivateResponse> => {
+    try {
+      const response = await axios.post(`${ADMIN_USERS_ENDPOINT}/${userId}/deactivate`, {
+        reason
+      });
+      return response.data;
+    } catch (error) {
+      console.error('User deactivation error:', error);
+      throw error;
+    }
+  },
+
+  // Activate user account (if needed for reactivation)
+  activateUser: async (userId: string): Promise<UserDeactivateResponse> => {
+    try {
+      const response = await axios.post(`${ADMIN_USERS_ENDPOINT}/${userId}/activate`);
+      return response.data;
+    } catch (error) {
+      console.error('User activation error:', error);
       throw error;
     }
   }
@@ -426,7 +510,7 @@ export const paymentsService = {
       throw error;
     }
   },
-  
+
   // Approve payment
   approvePayment: async (userId: string, paymentId: string): Promise<any> => {
     try {

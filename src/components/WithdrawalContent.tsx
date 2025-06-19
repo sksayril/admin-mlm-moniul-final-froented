@@ -94,6 +94,35 @@ const Notification: React.FC<NotificationProps> = ({ message, type, isVisible, o
 const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({ withdrawal, isOpen, onClose }) => {
   if (!isOpen || !withdrawal) return null;
 
+  const formatWalletAddress = (address: string) => {
+    if (address.length <= 20) return address;
+    return `${address.slice(0, 8)}...${address.slice(-8)}`;
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // Create a temporary notification
+      const notification = document.createElement('div');
+      notification.className = 'fixed top-4 right-4 bg-green-100 border-l-4 border-green-500 p-3 rounded-lg shadow-lg z-50';
+      notification.innerHTML = `
+        <div class="flex items-center">
+          <svg class="w-5 h-5 text-green-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+          </svg>
+          <span class="text-green-800 font-medium">Address copied to clipboard!</span>
+        </div>
+      `;
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        document.body.removeChild(notification);
+      }, 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black bg-opacity-75" onClick={onClose}></div>
@@ -127,6 +156,30 @@ const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({ withdrawal, i
               <span className="text-sm text-gray-500">Payment Method:</span>
               <span className="text-sm font-medium capitalize">{withdrawal.paymentMethod}</span>
             </div>
+            <div className="flex justify-between">
+              <span className="text-sm text-gray-500">Status:</span>
+              <span className={`text-sm font-medium capitalize ${
+                withdrawal.status === 'approved' ? 'text-green-600' : 
+                withdrawal.status === 'rejected' ? 'text-red-600' : 
+                'text-yellow-600'
+              }`}>
+                {withdrawal.status}
+              </span>
+            </div>
+            
+            {withdrawal.processedDate && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Processed Date:</span>
+                <span className="text-sm font-medium">{new Date(withdrawal.processedDate).toLocaleDateString()}</span>
+              </div>
+            )}
+            
+            {withdrawal.transactionId && (
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Transaction ID:</span>
+                <span className="text-sm font-medium">{withdrawal.transactionId}</span>
+              </div>
+            )}
             
             <hr className="my-4" />
             
@@ -161,6 +214,44 @@ const PaymentDetailsModal: React.FC<PaymentDetailsModalProps> = ({ withdrawal, i
                   <div className="flex justify-between">
                     <span className="text-sm text-gray-500">UPI ID:</span>
                     <span className="text-sm font-medium">{withdrawal.paymentDetails.upiId}</span>
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {withdrawal.paymentMethod === 'crypto' && withdrawal.paymentDetails.cryptoWallet && (
+              <div className="space-y-3">
+                <h3 className="font-medium text-gray-900">Crypto Wallet Details</h3>
+                <div className="bg-gray-50 p-4 rounded-lg space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Wallet Type:</span>
+                    <span className="text-sm font-medium capitalize">{withdrawal.paymentDetails.cryptoWallet.walletType}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Network:</span>
+                    <span className="text-sm font-medium uppercase">{withdrawal.paymentDetails.cryptoWallet.network}</span>
+                  </div>
+                  <div className="space-y-2">
+                    <span className="text-sm text-gray-500">Wallet Address:</span>
+                    <div className="bg-white p-3 rounded-lg border border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-mono text-gray-900 break-all">
+                          {formatWalletAddress(withdrawal.paymentDetails.cryptoWallet.walletAddress)}
+                        </span>
+                        <button
+                          onClick={() => copyToClipboard(withdrawal.paymentDetails.cryptoWallet!.walletAddress)}
+                          className="ml-2 p-1 text-gray-500 hover:text-gray-700 rounded transition-colors"
+                          title="Copy full address"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                        </button>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-400 font-mono break-all">
+                        Full: {withdrawal.paymentDetails.cryptoWallet.walletAddress}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -543,6 +634,11 @@ const WithdrawalContent: React.FC = () => {
     switch (method) {
       case 'bank': return <Building className="w-4 h-4" />;
       case 'upi': return <CreditCard className="w-4 h-4" />;
+      case 'crypto': return (
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+          <path d="M12 2L14.09 8.26L20 6L14.09 15.74L12 22L9.91 15.74L4 6L9.91 8.26L12 2Z"/>
+        </svg>
+      );
       default: return <DollarSign className="w-4 h-4" />;
     }
   };

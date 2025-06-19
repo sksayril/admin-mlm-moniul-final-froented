@@ -76,8 +76,8 @@ const StatsChart: React.FC<StatsChartProps> = ({
         label: dataType === 'newUsers' 
           ? 'New Users' 
           : dataType === 'revenue' 
-            ? 'Revenue ($)' 
-            : 'Withdrawals ($)',
+            ? 'Revenue (₹)' 
+            : 'Withdrawals (₹)',
         data: chartData.datasets[dataType],
         borderColor: getLineColor(),
         backgroundColor: `${getLineColor()}33`, // Add transparency
@@ -110,9 +110,8 @@ const StatsChart: React.FC<StatsChartProps> = ({
             
             if (dataType === 'newUsers') {
               return `${label}: ${value}`;
-            } else {
-              return `${label}: $${value.toFixed(2)}`;
             }
+            return `${label}: ₹${value.toFixed(2)}`;
           }
         }
       }
@@ -122,16 +121,20 @@ const StatsChart: React.FC<StatsChartProps> = ({
         beginAtZero: true,
         ticks: {
           callback: function(value: any) {
-            if (dataType === 'newUsers') {
-              return value;
-            } else {
-              return `$${value}`;
-            }
+            return dataType === 'newUsers' 
+              ? value 
+              : `₹${value}`;
           }
         }
       }
     }
   };
+
+  const yAxisLabel = dataType === 'newUsers' 
+    ? 'Number of Users'
+    : dataType === 'revenue' 
+      ? 'Revenue (₹)'
+      : 'Withdrawals (₹)';
 
   return (
     <div style={{ height: `${height}px`, position: 'relative' }}>
