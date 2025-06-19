@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar hiding for horizontal scrolling tabs */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
+}
+.scrollbar-hide::-webkit-scrollbar { 
+  display: none;  /* Safari and Chrome */
+}
+
+/* Fade in animation for notifications */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Mobile responsive table spacing */
+@media (max-width: 1024px) {
+  .mobile-card {
+    @apply border-b border-gray-200 p-4 hover:bg-gray-50 transition-colors;
+  }
+  
+  .mobile-card-header {
+    @apply flex items-start justify-between mb-3;
+  }
+  
+  .mobile-card-content {
+    @apply grid grid-cols-2 gap-3 mb-3;
+  }
+  
+  .mobile-card-actions {
+    @apply flex items-center justify-between pt-3 border-t border-gray-100;
+  }
+}
+
+/* Ensure proper min-width for tab buttons */
+.tab-button {
+  min-width: max-content;
+}
+
+/* Custom focus styles for better accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2;
+}
