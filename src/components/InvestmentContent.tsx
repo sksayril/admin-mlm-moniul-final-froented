@@ -546,7 +546,7 @@ const InvestmentContent: React.FC = () => {
   ]);
 
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
+  const [activeTab, setActiveTab] = useState<TabType>('pending');
   
   // Recharges state
   const [pendingRecharges, setPendingRecharges] = useState<InvestmentRecharge[]>([]);
@@ -773,7 +773,7 @@ const InvestmentContent: React.FC = () => {
 
   const getTabIcon = (tab: TabType) => {
     switch (tab) {
-      case 'overview': return <PieChart className="w-4 h-4" />;
+      // case 'overview': return <PieChart className="w-4 h-4" />;
       case 'pending': return <Clock className="w-4 h-4" />;
       case 'approved': return <CheckCircle className="w-4 h-4" />;
       case 'rejected': return <XCircle className="w-4 h-4" />;
