@@ -7,6 +7,7 @@ import TpinContent from './TpinContent';
 import WithdrawalContent from './WithdrawalContent';
 import MlmContent from './MlmContent';
 import PaymentsContent from './PaymentsContent';
+import InvestmentContent from './InvestmentContent';
 import { Menu, X } from 'lucide-react';
 import { authService, AdminData } from '../api';
 
@@ -88,6 +89,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onLogout }) => {
             <Route path="/tpin" element={<TpinContent />} />
             <Route path="/payments" element={<PaymentsContent />} />
             <Route path="/withdrawal" element={<WithdrawalContent />} />
+            <Route path="/investment" element={<InvestmentContent />} />
             <Route path="/mlm" element={<MlmContent />} />
           </Routes>
         </main>

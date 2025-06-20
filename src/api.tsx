@@ -4,7 +4,8 @@
 import axios from 'axios';
 
 // API base URL
-const API_BASE_URL = 'https://api.forlifetradingindia.life/api';
+// const API_BASE_URL = 'https://api.forlifetradingindia.life/api';
+const API_BASE_URL = 'http://localhost:3111/api';
 
 // Admin API endpoints
 const ADMIN_AUTH_ENDPOINT = `${API_BASE_URL}/admin/auth`;
@@ -311,6 +312,32 @@ export interface TopPerformersResponse {
   sortedBy: string;
   data: {
     topPerformers: TopPerformer[];
+  };
+}
+
+export interface InvestmentRecharge {
+  _id: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  paymentId: string;
+  amount: number;
+  currency: string;
+  screenshot: string;
+  screenshotUrl: string;
+  status: string;
+  date: string;
+}
+
+export interface InvestmentRechargesResponse {
+  status: string;
+  data: {
+    recharges: InvestmentRecharge[];
+    totalCount: number;
+    currentPage: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
   };
 }
 
@@ -648,6 +675,21 @@ export const tpinService = {
       console.error('TPIN rejection error:', error);
       throw error;
     }
+  },
+
+  // Generate TPIN
+  generateTpin: async (userId: string, quantity: number, reason: string): Promise<any> => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/admin/tpin/generate`, {
+        userId,
+        quantity,
+        reason
+      });
+      return response.data;
+    } catch (error) {
+      console.error('TPIN generation error:', error);
+      throw error;
+    }
   }
 };
 
@@ -719,4 +761,86 @@ export const mlmService = {
   }
 };
 
-export default { authService, dashboardService, usersService, paymentsService, apiClient, tpinService, withdrawalService, mlmService }; 
+// Investment service
+export const investmentService = {
+  // Get investment statistics
+  getStats: async (): Promise<any> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/investment/stats`);
+      return response.data;
+    } catch (error) {
+      console.error('Investment stats error:', error);
+      throw error;
+    }
+  },
+
+  // Get pending investment recharges
+  getPendingRecharges: async (): Promise<InvestmentRechargesResponse> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/investment/recharges/pending`);
+      return response.data;
+    } catch (error) {
+      console.error('Investment pending recharges error:', error);
+      throw error;
+    }
+  },
+
+  // Get all investment recharges
+  getAllRecharges: async (page: number = 1, limit: number = 10): Promise<InvestmentRechargesResponse> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/investment/recharges?page=${page}&limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error('Investment recharges error:', error);
+      throw error;
+    }
+  },
+  
+  // Get approved investment recharges
+  getApprovedRecharges: async (page: number = 1, limit: number = 10): Promise<InvestmentRechargesResponse> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/investment/recharges/approved?page=${page}&limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error('Investment approved recharges error:', error);
+      throw error;
+    }
+  },
+  
+  // Get rejected investment recharges
+  getRejectedRecharges: async (page: number = 1, limit: number = 10): Promise<InvestmentRechargesResponse> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/investment/recharges/rejected?page=${page}&limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error('Investment rejected recharges error:', error);
+      throw error;
+    }
+  },
+
+  // Approve investment recharge
+  approveRecharge: async (userId: string, paymentId: string): Promise<any> => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/admin/investment/recharges/${userId}/${paymentId}/approve`);
+      return response.data;
+    } catch (error) {
+      console.error('Investment recharge approval error:', error);
+      throw error;
+    }
+  },
+
+  // Reject investment recharge
+  rejectRecharge: async (userId: string, paymentId: string, reason: string): Promise<any> => {
+    try {
+      const response = await axios.post(`${API_BASE_URL}/admin/investment/recharges/${userId}/${paymentId}/reject`, {
+        reason
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Investment recharge rejection error:', error);
+      throw error;
+    }
+  }
+};
+
+export default { authService, dashboardService, usersService, paymentsService, apiClient, tpinService, withdrawalService, mlmService, investmentService }; 

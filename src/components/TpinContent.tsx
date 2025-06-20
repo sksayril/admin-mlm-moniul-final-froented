@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Check, X, AlertCircle, Eye, CheckCircle, FileText, Clock, XCircle, Key, Calendar } from 'lucide-react';
+import { Search, Filter, Check, X, AlertCircle, Eye, CheckCircle, FileText, Clock, XCircle, Key, Calendar, Plus } from 'lucide-react';
 import { tpinService, PendingTpinRequest, TpinHistoryItem } from '../api';
 
 interface ApprovalModalProps {
@@ -23,6 +23,13 @@ interface NotificationProps {
   type: 'success' | 'error' | 'info';
   isVisible: boolean;
   onClose: () => void;
+}
+
+interface GenerateTpinModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: (userId: string, quantity: number, reason: string) => void;
+  isProcessing: boolean;
 }
 
 type TabType = 'pending' | 'history' | 'approved' | 'rejected' | 'used';
@@ -244,6 +251,117 @@ const RejectionModal: React.FC<RejectionModalProps> = ({ tpinRequest, isOpen, on
   );
 };
 
+const GenerateTpinModal: React.FC<GenerateTpinModalProps> = ({ isOpen, onClose, onConfirm, isProcessing }) => {
+  const [userId, setUserId] = useState('');
+  const [quantity, setQuantity] = useState(1);
+  const [reason, setReason] = useState('');
+
+  const handleSubmit = () => {
+    if (userId.trim() && quantity > 0 && reason.trim()) {
+      onConfirm(userId.trim(), quantity, reason.trim());
+    }
+  };
+
+  const handleClose = () => {
+    setUserId('');
+    setQuantity(1);
+    setReason('');
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={handleClose}></div>
+      
+      {/* Modal */}
+      <div className="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">Generate TPIN</h2>
+        </div>
+        
+        <div className="p-6">
+          <div className="mb-6 space-y-4">
+            <p className="text-gray-600">Generate new TPINs for a user:</p>
+            
+            <div>
+              <label htmlFor="userId" className="block text-sm font-medium text-gray-700 mb-2">
+                User ID <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                id="userId"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="Enter user ID (e.g., LIFE10001)"
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="quantity" className="block text-sm font-medium text-gray-700 mb-2">
+                Quantity <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="number"
+                id="quantity"
+                min="1"
+                max="10"
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
+            
+            <div>
+              <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
+                Reason <span className="text-red-500">*</span>
+              </label>
+              <textarea
+                id="reason"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder="Enter reason for generating TPINs..."
+                rows={3}
+                className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={handleClose}
+              disabled={isProcessing}
+              className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-lg transition-colors disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSubmit}
+              disabled={isProcessing || !userId.trim() || quantity < 1 || !reason.trim()}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center disabled:opacity-50"
+            >
+              {isProcessing ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Transfer TPINs
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const TpinContent: React.FC = () => {
   const [tpinRequests, setTpinRequests] = useState<PendingTpinRequest[]>([]);
   const [tpinHistory, setTpinHistory] = useState<TpinHistoryItem[]>([]);
@@ -254,7 +372,9 @@ const TpinContent: React.FC = () => {
   const [selectedTpinRequest, setSelectedTpinRequest] = useState<PendingTpinRequest | null>(null);
   const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
   const [isRejectionModalOpen, setIsRejectionModalOpen] = useState(false);
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
   const [processingTpinId, setProcessingTpinId] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [notification, setNotification] = useState<{
     message: string;
     type: 'success' | 'error' | 'info';
@@ -324,6 +444,14 @@ const TpinContent: React.FC = () => {
     setIsRejectionModalOpen(false);
   };
 
+  const handleOpenGenerateModal = () => {
+    setIsGenerateModalOpen(true);
+  };
+
+  const handleCloseGenerateModal = () => {
+    setIsGenerateModalOpen(false);
+  };
+
   const handleApproveTpin = async (userId: string, tpinId: string) => {
     try {
       setProcessingTpinId(tpinId);
@@ -373,6 +501,29 @@ const TpinContent: React.FC = () => {
       showNotification('Failed to reject TPIN. Please try again.', 'error');
     } finally {
       setProcessingTpinId(null);
+    }
+  };
+
+  const handleGenerateTpin = async (userId: string, quantity: number, reason: string) => {
+    try {
+      setIsGenerating(true);
+      const response = await tpinService.generateTpin(userId, quantity, reason);
+      
+      // Close modal and show success message
+      setIsGenerateModalOpen(false);
+      
+      showNotification(
+        `${quantity} TPIN(s) generated successfully for user ${userId}!`, 
+        'success'
+      );
+
+      // Refresh data to show the new TPINs
+      await fetchData();
+    } catch (err) {
+      console.error('Failed to generate TPIN:', err);
+      showNotification('Failed to generate TPIN. Please try again.', 'error');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -480,13 +631,22 @@ const TpinContent: React.FC = () => {
             <h2 className="text-2xl font-bold text-gray-900">TPIN Management</h2>
             <p className="text-gray-600 mt-1">Manage and process TPIN requests and history</p>
           </div>
-          <button 
-            onClick={() => fetchData()} 
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
-          >
-            <Key className="w-4 h-4" />
-            <span>Refresh Data</span>
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button 
+              onClick={handleOpenGenerateModal} 
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Transfer TPIN</span>
+            </button>
+            <button 
+              onClick={() => fetchData()} 
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+            >
+              <Key className="w-4 h-4" />
+              <span>Refresh Data</span>
+            </button>
+          </div>
         </div>
           </div>
 
@@ -677,6 +837,14 @@ const TpinContent: React.FC = () => {
         onClose={handleCloseRejectionModal}
         onConfirm={handleRejectTpin}
         isProcessing={processingTpinId === selectedTpinRequest?.tpin._id}
+      />
+
+      {/* Generate TPIN Modal */}
+      <GenerateTpinModal 
+        isOpen={isGenerateModalOpen}
+        onClose={handleCloseGenerateModal}
+        onConfirm={handleGenerateTpin}
+        isProcessing={isGenerating}
       />
 
       {/* Success/Error Notification */}

@@ -470,6 +470,11 @@ const PaymentsContent: React.FC = () => {
   };
 
   const filteredPayments = (payments || []).filter(payment => {
+    // Exclude payments with purpose "INVESTMENT WALLET" or "investment_wallet"
+    if (payment.purpose === 'INVESTMENT WALLET' || payment.purpose === 'investment_wallet' || payment.purpose.toLowerCase() === 'investment wallet') {
+      return false;
+    }
+    
     const matchesSearch = payment.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         payment.userEmail.toLowerCase().includes(searchTerm.toLowerCase()) ||
                         payment.userIdCode.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -513,8 +518,14 @@ const PaymentsContent: React.FC = () => {
 
   const getTabCount = (tab: TabType) => {
     if (!payments || payments.length === 0) return 0;
-    if (tab === 'all') return payments.length;
-    return payments.filter(payment => payment.status === tab).length;
+    
+    // Filter out investment wallet payments for counting
+    const eligiblePayments = payments.filter(payment => {
+      return !(payment.purpose === 'INVESTMENT WALLET' || payment.purpose === 'investment_wallet' || payment.purpose.toLowerCase() === 'investment wallet');
+    });
+    
+    if (tab === 'all') return eligiblePayments.length;
+    return eligiblePayments.filter(payment => payment.status === tab).length;
   };
 
   if (loading) {
@@ -808,7 +819,7 @@ const PaymentsContent: React.FC = () => {
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-700">
-            Showing {filteredPayments.length > 0 ? '1' : '0'} to {filteredPayments.length} of {(payments || []).length} {activeTab === 'all' ? '' : activeTab} payments
+            Showing {filteredPayments.length > 0 ? '1' : '0'} to {filteredPayments.length} of {((payments || []).filter(payment => !(payment.purpose === 'INVESTMENT WALLET' || payment.purpose === 'investment_wallet' || payment.purpose.toLowerCase() === 'investment wallet'))).length} {activeTab === 'all' ? '' : activeTab} payments
           </p>
           <div className="flex items-center space-x-2">
             <button className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors" disabled={true}>
