@@ -4,8 +4,8 @@
 import axios from 'axios';
 
 // API base URL
-// const API_BASE_URL = 'https://api.forlifetradingindia.life/api';
-const API_BASE_URL = 'http://localhost:3111/api';
+const API_BASE_URL = 'https://api.forlifetradingindia.life/api';
+// const API_BASE_URL = 'http://localhost:3111/api';
 
 // Admin API endpoints
 const ADMIN_AUTH_ENDPOINT = `${API_BASE_URL}/admin/auth`;
@@ -338,6 +338,26 @@ export interface InvestmentRechargesResponse {
     totalPages: number;
     hasNextPage: boolean;
     hasPrevPage: boolean;
+  };
+}
+
+export interface CryptoRequest {
+  requestId: string;
+  userId: string;
+  userName: string;
+  userEmail: string;
+  type: 'purchase' | 'sell';
+  coinValue: number;
+  quantity: number;
+  totalAmount: number;
+  createdAt: string;
+}
+
+export interface CryptoRequestsResponse {
+  status: string;
+  data: {
+    count: number;
+    requests: CryptoRequest[];
   };
 }
 
@@ -843,4 +863,75 @@ export const investmentService = {
   }
 };
 
-export default { authService, dashboardService, usersService, paymentsService, apiClient, tpinService, withdrawalService, mlmService, investmentService }; 
+// Crypto service
+export const cryptoService = {
+  // Get pending crypto requests
+  getPendingRequests: async (): Promise<CryptoRequestsResponse> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/crypto/requests/pending`);
+      return response.data;
+    } catch (error) {
+      console.error('Crypto pending requests error:', error);
+      throw error;
+    }
+  },
+
+  // Get approved crypto requests
+  getApprovedRequests: async (): Promise<CryptoRequestsResponse> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/crypto/requests/approved`);
+      return response.data;
+    } catch (error) {
+      console.error('Crypto approved requests error:', error);
+      throw error;
+    }
+  },
+
+  // Get rejected crypto requests
+  getRejectedRequests: async (): Promise<CryptoRequestsResponse> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/crypto/requests/rejected`);
+      return response.data;
+    } catch (error) {
+      console.error('Crypto rejected requests error:', error);
+      throw error;
+    }
+  },
+
+  // Get all crypto requests
+  getAllRequests: async (): Promise<CryptoRequestsResponse> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/crypto/requests`);
+      return response.data;
+    } catch (error) {
+      console.error('Crypto all requests error:', error);
+      throw error;
+    }
+  },
+
+  // Approve crypto request
+  approveRequest: async (userId: string, requestId: string): Promise<any> => {
+    try {
+      const response = await axios.patch(`${API_BASE_URL}/admin/crypto/requests/${userId}/${requestId}/approve`);
+      return response.data;
+    } catch (error) {
+      console.error('Crypto request approval error:', error);
+      throw error;
+    }
+  },
+
+  // Reject crypto request
+  rejectRequest: async (userId: string, requestId: string, reason: string): Promise<any> => {
+    try {
+      const response = await axios.patch(`${API_BASE_URL}/admin/crypto/requests/${userId}/${requestId}/reject`, {
+        reason
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Crypto request rejection error:', error);
+      throw error;
+    }
+  }
+};
+
+export default { authService, dashboardService, usersService, paymentsService, apiClient, tpinService, withdrawalService, mlmService, investmentService, cryptoService }; 

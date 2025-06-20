@@ -9,7 +9,8 @@ import {
   LogOut,
   Shield,
   Wallet,
-  TrendingUp
+  TrendingUp,
+  Bitcoin
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -29,6 +30,7 @@ const Sidebar: React.FC<SidebarProps> = ({ onLogout, closeSidebar }) => {
     { id: 'payments', name: 'Payments', icon: Wallet, path: '/dashboard/payments' },
     { id: 'withdrawal', name: 'Withdrawal', icon: CreditCard, path: '/dashboard/withdrawal' },
     { id: 'investment', name: 'Investment', icon: TrendingUp, path: '/dashboard/investment' },
+    { id: 'crypto', name: 'Crypto Coin', icon: Bitcoin, path: '/dashboard/crypto' },
     { id: 'mlm', name: 'MLM', icon: Network, path: '/dashboard/mlm' },
   ];
 
