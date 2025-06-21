@@ -117,6 +117,7 @@ export interface User {
   email: string;
   role: string;
   isActive: boolean;
+  blocked: boolean;
   referrer?: string;
   referrals: string[];
   rank: string;
@@ -401,6 +402,38 @@ export interface UserDeactivateResponse {
   };
 }
 
+export interface BlockedUser {
+  _id: string;
+  name: string;
+  userId: string;
+  email: string;
+  mobile: string;
+  blocked: boolean;
+  blockedAt: string;
+  blockReason: string;
+  blockedBy: {
+    _id: string;
+    name: string;
+    userId: string;
+    email: string;
+  };
+}
+
+export interface BlockedUsersResponse {
+  status: string;
+  message: string;
+  data: {
+    users: BlockedUser[];
+    pagination: {
+      currentPage: number;
+      totalPages: number;
+      totalUsers: number;
+      hasNextPage: boolean;
+      hasPrevPage: boolean;
+    };
+  };
+}
+
 // API Service Setup
 const setupAxiosInterceptors = () => {
   axios.interceptors.request.use(
@@ -509,26 +542,37 @@ export const usersService = {
     }
   },
 
-  // Deactivate user account
-  deactivateUser: async (userId: string, reason: string): Promise<UserDeactivateResponse> => {
+  // Block user account
+  blockUser: async (userId: string, reason: string): Promise<UserDeactivateResponse> => {
     try {
-      const response = await axios.post(`${ADMIN_USERS_ENDPOINT}/${userId}/deactivate`, {
+      const response = await axios.post(`${API_BASE_URL}/admin/block/block/${userId}`, {
         reason
       });
       return response.data;
     } catch (error) {
-      console.error('User deactivation error:', error);
+      console.error('User block error:', error);
       throw error;
     }
   },
 
-  // Activate user account (if needed for reactivation)
-  activateUser: async (userId: string): Promise<UserDeactivateResponse> => {
+  // Unblock user account
+  unblockUser: async (userId: string): Promise<UserDeactivateResponse> => {
     try {
-      const response = await axios.post(`${ADMIN_USERS_ENDPOINT}/${userId}/activate`);
+      const response = await axios.post(`${API_BASE_URL}/admin/block/unblock/${userId}`);
       return response.data;
     } catch (error) {
-      console.error('User activation error:', error);
+      console.error('User unblock error:', error);
+      throw error;
+    }
+  },
+
+  // Get blocked users
+  getBlockedUsers: async (page: number = 1, limit: number = 10): Promise<BlockedUsersResponse> => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/admin/block/blocked-users?page=${page}&limit=${limit}`);
+      return response.data;
+    } catch (error) {
+      console.error('Blocked users fetch error:', error);
       throw error;
     }
   }

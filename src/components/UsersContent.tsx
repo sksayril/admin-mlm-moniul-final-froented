@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Edit, Trash2, Eye, UserCheck, AlertCircle, MoreHorizontal, Lock, Copy, Check, UserX, Shield } from 'lucide-react';
-import { usersService, User, UserPasswordResponse, UserDeactivateResponse } from '../api';
+import { Search, Filter, Plus, Edit, Trash2, Eye, UserCheck, AlertCircle, MoreHorizontal, Lock, Copy, Check, UserX, Shield, Users, UserMinus } from 'lucide-react';
+import { usersService, User, UserPasswordResponse, UserDeactivateResponse, BlockedUser, BlockedUsersResponse } from '../api';
 
 interface UserModalProps {
   user: User | null;
@@ -15,7 +15,7 @@ interface PasswordModalProps {
   userName: string;
 }
 
-interface DeactivateModalProps {
+interface BlockModalProps {
   isOpen: boolean;
   onClose: () => void;
   user: User | null;
@@ -439,12 +439,12 @@ const UserDetailModal: React.FC<UserModalProps> = ({ user, isOpen, onClose }) =>
   );
 };
 
-const DeactivateModal: React.FC<DeactivateModalProps> = ({ isOpen, onClose, user, onConfirm, isProcessing }) => {
+const BlockModal: React.FC<BlockModalProps> = ({ isOpen, onClose, user, onConfirm, isProcessing }) => {
   const [reason, setReason] = useState('');
 
   const handleConfirm = () => {
     if (user && reason.trim()) {
-      onConfirm(user.userId, reason.trim());
+      onConfirm(user._id, reason.trim());
     }
   };
 
@@ -467,7 +467,7 @@ const DeactivateModal: React.FC<DeactivateModalProps> = ({ isOpen, onClose, user
             <div className="w-8 h-8 bg-red-100 rounded-lg flex items-center justify-center">
               <UserX className="w-4 h-4 text-red-600" />
             </div>
-            <h2 className="text-lg font-semibold text-gray-900">Deactivate User Account</h2>
+            <h2 className="text-lg font-semibold text-gray-900">Block User Account</h2>
           </div>
           <button 
             onClick={handleClose}
@@ -491,22 +491,22 @@ const DeactivateModal: React.FC<DeactivateModalProps> = ({ isOpen, onClose, user
           <div className="mb-4">
             <p className="text-sm text-gray-600 mb-1">Current Status</p>
             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-              user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+              !user.blocked ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
             }`}>
-              {user.isActive ? 'Active' : 'Inactive'}
+              {!user.blocked ? 'Active' : 'Blocked'}
             </span>
           </div>
           
           <div className="space-y-3">
             <div>
               <label htmlFor="reason" className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for Deactivation *
+                Reason for Blocking *
               </label>
               <textarea
                 id="reason"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Enter the reason for deactivating this user account..."
+                placeholder="Enter the reason for blocking this user account..."
                 className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
                 rows={4}
                 required
@@ -533,10 +533,10 @@ const DeactivateModal: React.FC<DeactivateModalProps> = ({ isOpen, onClose, user
               {isProcessing ? (
                 <div className="flex items-center space-x-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Deactivating...</span>
+                  <span>Blocking...</span>
                 </div>
               ) : (
-                'Deactivate Account'
+                'Block Account'
               )}
             </button>
           </div>
@@ -547,7 +547,17 @@ const DeactivateModal: React.FC<DeactivateModalProps> = ({ isOpen, onClose, user
 };
 
 const UsersContent: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('all');
   const [users, setUsers] = useState<User[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<BlockedUser[]>([]);
+  const [blockedUsersLoading, setBlockedUsersLoading] = useState(false);
+  const [blockedUsersPagination, setBlockedUsersPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalUsers: 0,
+    hasNextPage: false,
+    hasPrevPage: false
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -561,9 +571,24 @@ const UsersContent: React.FC = () => {
     type: 'info' as 'success' | 'error' | 'info',
     isVisible: false
   });
-  const [isDeactivateModalOpen, setIsDeactivateModalOpen] = useState(false);
-  const [selectedUserForDeactivation, setSelectedUserForDeactivation] = useState<User | null>(null);
+  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
+  const [selectedUserForBlocking, setSelectedUserForBlocking] = useState<User | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  const fetchBlockedUsers = async (page: number = 1) => {
+    try {
+      setBlockedUsersLoading(true);
+      const response = await usersService.getBlockedUsers(page, 10);
+      setBlockedUsers(response.data.users);
+      setBlockedUsersPagination(response.data.pagination);
+      setError(null);
+    } catch (err) {
+      setError('Failed to fetch blocked users. Please try again later.');
+      console.error('Blocked users error:', err);
+    } finally {
+      setBlockedUsersLoading(false);
+    }
+  };
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -582,6 +607,12 @@ const UsersContent: React.FC = () => {
 
     fetchUsers();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'blocked') {
+      fetchBlockedUsers(1);
+    }
+  }, [activeTab]);
 
   const handleViewUser = (user: User) => {
     setSelectedUser(user);
@@ -617,48 +648,57 @@ const UsersContent: React.FC = () => {
     setNotification(prev => ({ ...prev, isVisible: false }));
   };
 
-  const handleDeactivateUser = (user: User) => {
-    setSelectedUserForDeactivation(user);
-    setIsDeactivateModalOpen(true);
+  const handleBlockUser = (user: User) => {
+    setSelectedUserForBlocking(user);
+    setIsBlockModalOpen(true);
   };
 
-  const handleCloseDeactivateModal = () => {
-    setIsDeactivateModalOpen(false);
-    setSelectedUserForDeactivation(null);
+  const handleCloseBlockModal = () => {
+    setIsBlockModalOpen(false);
+    setSelectedUserForBlocking(null);
   };
 
-  const handleConfirmDeactivation = async (userId: string, reason: string) => {
-    if (selectedUserForDeactivation) {
+  const handleConfirmBlocking = async (userId: string, reason: string) => {
+    if (selectedUserForBlocking) {
       try {
         setIsProcessing(true);
-        await usersService.deactivateUser(userId, reason);
-        showNotification('User deactivated successfully', 'success');
+        await usersService.blockUser(userId, reason);
+        showNotification('User blocked successfully', 'success');
         const updatedUsers = users.map(user =>
-          user.userId === userId ? { ...user, isActive: false } : user
+          user._id === userId ? { ...user, blocked: true } : user
         );
         setUsers(updatedUsers);
       } catch (err) {
-        console.error('Failed to deactivate user:', err);
-        showNotification('Failed to deactivate user. Please try again later.', 'error');
+        console.error('Failed to block user:', err);
+        showNotification('Failed to block user. Please try again later.', 'error');
       } finally {
         setIsProcessing(false);
-        handleCloseDeactivateModal();
+        handleCloseBlockModal();
       }
     }
   };
 
-  const handleActivateUser = async (user: User) => {
+  const handleUnblockUser = async (user: User | BlockedUser) => {
     try {
       setIsProcessing(true);
-      await usersService.activateUser(user.userId);
-      showNotification('User activated successfully', 'success');
-      const updatedUsers = users.map(u =>
-        u.userId === user.userId ? { ...u, isActive: true } : u
-      );
-      setUsers(updatedUsers);
+      await usersService.unblockUser(user._id);
+      showNotification('User unblocked successfully', 'success');
+      
+      // Update the all users list if it's a regular user
+      if ('isActive' in user) {
+        const updatedUsers = users.map(u =>
+          u._id === user._id ? { ...u, blocked: false } : u
+        );
+        setUsers(updatedUsers);
+      }
+      
+      // Refresh blocked users list if we're on the blocked tab
+      if (activeTab === 'blocked') {
+        fetchBlockedUsers(blockedUsersPagination.currentPage);
+      }
     } catch (err) {
-      console.error('Failed to activate user:', err);
-      showNotification('Failed to activate user. Please try again later.', 'error');
+      console.error('Failed to unblock user:', err);
+      showNotification('Failed to unblock user. Please try again later.', 'error');
     } finally {
       setIsProcessing(false);
     }
@@ -669,8 +709,8 @@ const UsersContent: React.FC = () => {
                          user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.userId.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = selectedFilter === 'all' || 
-                         (selectedFilter === 'active' && user.isActive) ||
-                         (selectedFilter === 'inactive' && !user.isActive);
+                         (selectedFilter === 'active' && !user.blocked) ||
+                         (selectedFilter === 'inactive' && user.blocked);
     return matchesSearch && matchesFilter;
   });
 
@@ -718,33 +758,75 @@ const UsersContent: React.FC = () => {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search users by name, email, or ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <div className="flex items-center space-x-2">
-            <Filter className="w-5 h-5 text-gray-400" />
-            <select
-              value={selectedFilter}
-              onChange={(e) => setSelectedFilter(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      {/* Tabs */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-100">
+        <div className="border-b border-gray-200">
+          <nav className="flex space-x-8 px-6" aria-label="Tabs">
+            <button
+              onClick={() => setActiveTab('all')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'all'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-            </select>
-          </div>
+              <div className="flex items-center space-x-2">
+                <Users className="w-4 h-4" />
+                <span>All Users</span>
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab('blocked')}
+              className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === 'blocked'
+                  ? 'border-red-500 text-red-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center space-x-2">
+                <UserMinus className="w-4 h-4" />
+                <span>Blocked Users</span>
+                {blockedUsersPagination.totalUsers > 0 && (
+                  <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full">
+                    {blockedUsersPagination.totalUsers}
+                  </span>
+                )}
+              </div>
+            </button>
+          </nav>
         </div>
       </div>
+
+      {/* All Users Tab Content */}
+      {activeTab === 'all' && (
+        <>
+          {/* Filters */}
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="flex-1 relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                <input
+                  type="text"
+                  placeholder="Search users by name, email, or ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Filter className="w-5 h-5 text-gray-400" />
+                <select
+                  value={selectedFilter}
+                  onChange={(e) => setSelectedFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="all">All Status</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Blocked</option>
+                </select>
+              </div>
+            </div>
+          </div>
 
       {/* Users Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
@@ -754,7 +836,8 @@ const UsersContent: React.FC = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Block Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User Status</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Join Date</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Wallet</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -778,7 +861,12 @@ const UsersContent: React.FC = () => {
                     {user.userId}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${!user.blocked ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                      {!user.blocked ? 'Active' : 'Blocked'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${user.isActive ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800'}`}>
                       {user.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </td>
@@ -804,21 +892,21 @@ const UsersContent: React.FC = () => {
                       >
                         <Lock className="w-4 h-4" />
                       </button>
-                      {user.isActive ? (
+                      {user.blocked ? (
                         <button 
-                          onClick={() => handleDeactivateUser(user)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded transition-colors"
-                          title="Deactivate User"
+                          onClick={() => handleUnblockUser(user)}
+                          className="text-green-600 hover:text-green-900 p-1 rounded transition-colors"
+                          title="Unblock User"
                         >
-                          <UserX className="w-4 h-4" />
+                          <Shield className="w-4 h-4" />
                         </button>
                       ) : (
                         <button 
-                          onClick={() => handleActivateUser(user)}
-                          className="text-green-600 hover:text-green-900 p-1 rounded transition-colors"
-                          title="Activate User"
+                          onClick={() => handleBlockUser(user)}
+                          className="text-red-600 hover:text-red-900 p-1 rounded transition-colors"
+                          title="Block User"
                         >
-                          <Shield className="w-4 h-4" />
+                          <UserX className="w-4 h-4" />
                         </button>
                       )}
                       {/* <button 
@@ -838,7 +926,7 @@ const UsersContent: React.FC = () => {
                 </tr>
               )) : (
                 <tr>
-                  <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
                     No users found matching your search criteria
                   </td>
                 </tr>
@@ -848,25 +936,147 @@ const UsersContent: React.FC = () => {
         </div>
       </div>
 
-      {/* Pagination */}
-      <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-700">
-            Showing {filteredUsers.length > 0 ? '1' : '0'} to {filteredUsers.length} of {users.length} users
-          </p>
-          <div className="flex items-center space-x-2">
-            <button className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors" disabled={true}>
-              Previous
-            </button>
-            <button className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 transition-colors">
-              1
-            </button>
-            <button className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors" disabled={true}>
-              Next
-            </button>
+          {/* Pagination */}
+          <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-gray-700">
+                Showing {filteredUsers.length > 0 ? '1' : '0'} to {filteredUsers.length} of {users.length} users
+              </p>
+              <div className="flex items-center space-x-2">
+                <button className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors" disabled={true}>
+                  Previous
+                </button>
+                <button className="px-3 py-1 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600 transition-colors">
+                  1
+                </button>
+                <button className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors" disabled={true}>
+                  Next
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        </>
+      )}
+
+      {/* Blocked Users Tab Content */}
+      {activeTab === 'blocked' && (
+        <>
+          {blockedUsersLoading ? (
+            <div className="flex items-center justify-center min-h-[40vh]">
+              <div className="text-center">
+                <div className="w-12 h-12 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mx-auto"></div>
+                <p className="mt-4 text-gray-600">Loading blocked users...</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Blocked Users Table */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-200">
+                  <h3 className="text-lg font-semibold text-gray-900">Blocked Users List</h3>
+                  <p className="text-sm text-gray-600 mt-1">Users who have been blocked from the platform</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Blocked Date</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Blocked By</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {blockedUsers.length > 0 ? blockedUsers.map((user) => (
+                        <tr key={user._id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="w-10 h-10 bg-red-500 rounded-full flex items-center justify-center text-white font-medium">
+                                {user.name.charAt(0)}
+                              </div>
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                                <div className="text-sm text-gray-500">{user.email}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {user.userId}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {user.mobile}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {new Date(user.blockedAt).toLocaleDateString()}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="max-w-xs">
+                              <p className="text-sm text-gray-900 truncate" title={user.blockReason}>
+                                {user.blockReason}
+                              </p>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{user.blockedBy.name}</div>
+                            <div className="text-sm text-gray-500">{user.blockedBy.userId}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                            <button 
+                              onClick={() => handleUnblockUser({ ...user, isActive: false } as any)}
+                              className="text-green-600 hover:text-green-900 p-1 rounded transition-colors"
+                              title="Unblock User"
+                            >
+                              <Shield className="w-4 h-4" />
+                            </button>
+                          </td>
+                        </tr>
+                      )) : (
+                        <tr>
+                          <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                            No blocked users found
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Blocked Users Pagination */}
+              <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-gray-700">
+                    Showing page {blockedUsersPagination.currentPage} of {blockedUsersPagination.totalPages} 
+                    ({blockedUsersPagination.totalUsers} total blocked users)
+                  </p>
+                  <div className="flex items-center space-x-2">
+                    <button 
+                      onClick={() => fetchBlockedUsers(blockedUsersPagination.currentPage - 1)}
+                      className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!blockedUsersPagination.hasPrevPage}
+                    >
+                      Previous
+                    </button>
+                    <span className="px-3 py-1 bg-red-500 text-white rounded-md text-sm">
+                      {blockedUsersPagination.currentPage}
+                    </span>
+                    <button 
+                      onClick={() => fetchBlockedUsers(blockedUsersPagination.currentPage + 1)}
+                      className="px-3 py-1 border border-gray-300 rounded-md text-sm text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!blockedUsersPagination.hasNextPage}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </>
+      )}
 
       {/* User Details Modal */}
       <UserDetailModal 
@@ -883,12 +1093,12 @@ const UsersContent: React.FC = () => {
         userName={selectedUserForPassword?.userName || ''}
       />
 
-      {/* Deactivate Modal */}
-      <DeactivateModal
-        isOpen={isDeactivateModalOpen}
-        onClose={handleCloseDeactivateModal}
-        user={selectedUserForDeactivation}
-        onConfirm={handleConfirmDeactivation}
+      {/* Block Modal */}
+      <BlockModal
+        isOpen={isBlockModalOpen}
+        onClose={handleCloseBlockModal}
+        user={selectedUserForBlocking}
+        onConfirm={handleConfirmBlocking}
         isProcessing={isProcessing}
       />
 
